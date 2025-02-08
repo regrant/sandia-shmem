@@ -638,6 +638,10 @@ define(`SHMEM_C_CTX_FETCH_OR_NBI',
 `SHMEM_FUNCTION_ATTRIBUTES void SHPRE()shmem_ctx_$1_atomic_fetch_or_nbi(shmem_ctx_t ctx, $2 *fetch, $2 *target, $2 value, int pe)')dnl
 SHMEM_DECLARE_FOR_BITWISE_AMO(`SHMEM_C_CTX_FETCH_OR_NBI')
 
+/* Session Routines */
+SHMEM_FUNCTION_ATTRIBUTES void SHPRE()shmem_session_start(shmem_ctx_t ctx, long options, const shmem_session_config_t *config, long config_mask);
+SHMEM_FUNCTION_ATTRIBUTES void SHPRE()shmem_session_stop(shmem_ctx_t ctx);
+
 /* Team Management Routines */
 SHMEM_FUNCTION_ATTRIBUTES int SHPRE()shmem_team_my_pe(shmem_team_t team);
 

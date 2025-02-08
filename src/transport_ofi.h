@@ -401,6 +401,9 @@ void shmem_transport_probe(void)
 int shmem_transport_ctx_create(struct shmem_internal_team_t *team, long options, shmem_transport_ctx_t **ctx);
 void shmem_transport_ctx_destroy(shmem_transport_ctx_t *ctx);
 
+int shmem_transport_session_start(shmem_transport_ctx_t *ctx, long options, const shmem_session_config_t *config, long config_mask);
+int shmem_transport_session_stop(shmem_transport_ctx_t *ctx);
+
 int shmem_transport_init(void);
 int shmem_transport_startup(void);
 int shmem_transport_fini(void);

@@ -150,6 +150,9 @@ extern shmem_transport_ctx_t shmem_transport_ctx_default;
 int shmem_transport_ctx_create(struct shmem_internal_team_t *team, long options, shmem_transport_ctx_t **ctx);
 void shmem_transport_ctx_destroy(shmem_transport_ctx_t *ctx);
 
+int shmem_transport_session_start(shmem_transport_ctx_t *ctx, long options, const shmem_session_config_t *config, long config_mask);
+int shmem_transport_session_stop(shmem_transport_ctx_t *ctx);
+
 /*
  * PORTALS4_GET_REMOTE_ACCESS is used to get the correct PT and offset
  * from the base of the list entry on that PT for a given target

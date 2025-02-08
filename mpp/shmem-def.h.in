@@ -99,6 +99,10 @@ typedef struct {
     int num_contexts;
 } shmem_team_config_t;
 
+typedef struct {
+    size_t total_ops;
+} shmem_session_config_t;
+
 #if SHMEM_HAVE_ATTRIBUTE_VISIBILITY == 1
     __attribute__((visibility("default"))) extern shmem_team_t SHMEM_TEAM_WORLD;
     __attribute__((visibility("default"))) extern shmem_team_t SHMEM_TEAM_SHARED;
@@ -115,6 +119,10 @@ typedef struct {
 
 #define SHMEM_SIGNAL_SET        0
 #define SHMEM_SIGNAL_ADD        1
+
+#define SHMEM_SESSION_TOTAL_OPS       (1l<<0)
+#define SHMEM_SESSION_BATCH           (1l<<0)
+#define SHMEM_SESSION_SAME_AMO        (1l<<1)
 
 #ifdef __cplusplus
 } /* extern "C" */

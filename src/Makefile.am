@@ -62,6 +62,7 @@ libsma_la_SOURCES = \
 	shmem_env_defs.h \
 	contexts_c.c \
 	contexts.c \
+	sessions_c.c \
 	perf_counters_c.c \
 	backtrace.c \
 	shmem_team.c \
