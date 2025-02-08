@@ -26,10 +26,6 @@ void SHMEM_FUNCTION_ATTRIBUTES FC_START_PES(fortran_integer_t *npes);
 void
 FC_START_PES(fortran_integer_t *npes)
 {
-    if (shmem_internal_initialized) {
-        RAISE_ERROR_STR("attempt to reinitialize library");
-    }
-
     shmem_internal_start_pes(*npes);
 }
 
@@ -40,11 +36,6 @@ void
 FC_SHMEM_INIT(void)
 {
     int tl_provided;
-
-    if (shmem_internal_initialized) {
-        RAISE_ERROR_STR("attempt to reinitialize library");
-    }
-
     shmem_internal_init(SHMEM_THREAD_SINGLE, &tl_provided);
 }
 

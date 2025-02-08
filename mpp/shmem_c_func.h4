@@ -26,6 +26,7 @@ dnl
 SHMEM_FUNCTION_ATTRIBUTES void SHPRE()shmem_init(void);
 SHMEM_FUNCTION_ATTRIBUTES int SHPRE()shmem_init_thread(int requested, int *provided);
 SHMEM_FUNCTION_ATTRIBUTES void SHPRE()shmem_query_thread(int *provided);
+SHMEM_FUNCTION_ATTRIBUTES void SHPRE()shmem_query_initialized(int *initialized);
 SHMEM_FUNCTION_ATTRIBUTES void SHPRE()shmem_finalize(void);
 SHMEM_FUNCTION_ATTRIBUTES int SHPRE()shmem_n_pes(void);
 SHMEM_FUNCTION_ATTRIBUTES int SHPRE()shmem_my_pe(void);

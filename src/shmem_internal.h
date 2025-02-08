@@ -33,7 +33,7 @@
 extern int shmem_internal_my_pe;
 extern int shmem_internal_num_pes;
 
-extern int shmem_internal_initialized;
+extern int shmem_internal_init_counter;
 extern int shmem_internal_finalized;
 extern int shmem_internal_thread_level;
 
@@ -189,7 +189,7 @@ extern hwloc_topology_t shmem_internal_topology;
 #ifdef ENABLE_ERROR_CHECKING
 #define SHMEM_ERR_CHECK_INITIALIZED()                                    \
     do {                                                                 \
-        if (!shmem_internal_initialized) {                               \
+        if (!shmem_internal_init_counter) {                               \
             RETURN_ERROR_STR(PACKAGE_NAME " library not initialized\n"); \
             abort();                                                     \
         }                                                                \

@@ -89,7 +89,7 @@ int shmem_external_heap_device = -1;
 
 int shmem_internal_my_pe = -1;
 int shmem_internal_num_pes = -1;
-int shmem_internal_initialized = 0;
+int shmem_internal_init_counter = 0;
 int shmem_internal_finalized = 0;
 int shmem_internal_initialized_with_start_pes = 0;
 int shmem_internal_global_exit_called = 0;
@@ -138,12 +138,18 @@ shmem_internal_randr_fini(void)
 static void
 shmem_internal_shutdown(void)
 {
-    if (!shmem_internal_initialized ||
+    if (!shmem_internal_init_counter ||
         shmem_internal_finalized) {
         return;
     }
 
     shmem_internal_barrier_all();
+
+    shmem_internal_init_counter -= 1;
+
+    if (shmem_internal_init_counter > 0) {
+        return;
+    }
 
     shmem_internal_finalized = 1;
 
@@ -165,12 +171,12 @@ shmem_internal_shutdown(void)
 static void
 shmem_internal_shutdown_atexit(void)
 {
-    if ( shmem_internal_initialized && !shmem_internal_finalized &&
+    if ( shmem_internal_init_counter && !shmem_internal_finalized &&
          !shmem_internal_initialized_with_start_pes && !shmem_internal_global_exit_called &&
          shmem_internal_my_pe == 0) {
         RAISE_WARN_STR("shutting down without a call to shmem_finalize");
     }
-
+    shmem_internal_init_counter = 1;
     shmem_internal_shutdown();
 }
 
@@ -518,7 +524,6 @@ shmem_internal_heap_postinit(void)
     randr_initialized = 1;
 
     atexit(shmem_internal_shutdown_atexit);
-    shmem_internal_initialized = 1;
 
     /* finish up */
 #ifndef USE_PMIX
@@ -554,12 +559,15 @@ shmem_internal_init(int tl_requested, int *tl_provided)
 {
     int ret;
 
-    ret = shmem_internal_heap_preinit(tl_requested, tl_provided);
-    if (ret) goto cleanup;
+    if (shmem_internal_init_counter == 0) {
+        ret = shmem_internal_heap_preinit(tl_requested, tl_provided);
+        if (ret) goto cleanup;
 
-    ret = shmem_internal_heap_postinit();
-    if (ret) goto cleanup;
+        ret = shmem_internal_heap_postinit();
+        if (ret) goto cleanup;
+    }
 
+    shmem_internal_init_counter += 1;
     return 0;
 
  cleanup:
