@@ -711,3 +711,38 @@ jobs:
           make check TESTS= -j
           SHMEM_DEBUG=1 SHMEM_INFO=1 make VERBOSE=1 TEST_RUNNER="${SOS_PM} -np 2" check
           ${SOS_PM} -np 1 modules/tests-sos/test/unit/hello
+
+  mmap_only:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - config_name: transport_none
+        sos_config: [--enable-mmap --enable-shr-atomics --enable-error-checking --enable-pmi-simple]
+
+    steps:
+      - name: Checking OS version
+        run: |
+          echo "OS_NAME=$(lsb_release -si)-$(ls_release -sr)" >> $GITHUB_ENV
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y gfortran mpich libmpich-dev libev-dev libev-libevent-dev
+          sudo sysctl -w kernel.yama.ptrace_scope=0
+          sudo sysctl -w kernel.randomize_va_space=0
+
+      # SOS
+      - name: Build SOS (${{ matrix.name }})
+        run: |
+          ./autogen.sh
+          mkdir build; cd build
+          ../configure --prefix=${SOS_INSTALL_DIR} ${{ matrix.sos_config }}
+          make -j
+          make install
+      - name: Test SOS (${{ matrix.name }})
+        run: |
+          cd build
+          make check TESTS= -j
+          SHMEM_DEBUG=1 SHMEM_INFO=1 make VERBOSE=1 TEST_RUNNER="${SOS_PM} -np 2" check
+          cat modules/tests-sos/test/unit/hello.log

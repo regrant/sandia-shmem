@@ -315,6 +315,10 @@ AC_ARG_ENABLE([memcpy],
     [AS_HELP_STRING([--enable-memcpy],
                     [Use memcpy to perform local put/get operations (default:disabled)])])
 
+AC_ARG_ENABLE([mmap],
+    [AC_HELP_STRING([--enable-mmap],
+                    [Use mmap to share symmetric data and heap segments in shared memory (default:disabled)])])
+
 AC_ARG_ENABLE([ofi-fence],
     [AS_HELP_STRING([--enable-ofi-fence],
                     [Use FI_FENCE feature to optimize put-with-signal operations. (default: disabled)])])
@@ -489,7 +493,7 @@ else
     transport_portals4="no"
     transport_ofi="no"
     transport_ucx="no"
-    AC_MSG_WARN([No transport requested])
+    AC_MSG_WARN([No network transport requested])
 fi
 
 AM_CONDITIONAL([USE_PORTALS4], [test "$transport_portals4" = "yes"])
@@ -504,29 +508,49 @@ CHECK_CMA(
     [transport_cma="yes"],
     [transport_cma="no"])
 
-# If both XPMEM and CMA requested, user needs to choose one:
-if test -n "$with_xpmem" -a "$with_xpmem" != "no" -a -n "$with_cma" -a "$with_cma" != "no" ; then
-    AC_MSG_ERROR([Cannot choose both XPMEM and CMA transports, see --help for details])
-# Check which was requested, XPMEM or CMA:
+
+num_shared_transports=0
+if test -n "$with_xpmem" -a "$with_xpmem" != "no" ; then
+    ((num_shared_transports+=1))
+fi
+if test -n "$with_cma" -a "$with_cma" != "no" ; then
+    ((num_shared_transports+=1))
+fi
+if test -n "$enable_mmap" -a "$enable_mmap" != "no" ; then
+    ((num_shared_transports+=1))
+fi
+
+# If more than one shared memory transport requested, user needs to choose one:
+if [[ $num_shared_transports -gt 1 ]] ; then
+    echo "Selected" $num_shared_transports "shared memory transports, please choose one."
+    AC_MSG_ERROR([Only one shared memory transport is allowed (mmap, XPMEM, or CMA), see --help for details])
+elif test -n "$enable_mmap" -a "$enable_mmap" != "no" ; then
+    transport_mmap="yes"
+    transport_cma="no"
+    transport_xpmem="no"
+    AC_DEFINE([USE_MMAP], [1], [Define if mmap transport is active])
+    AC_CHECK_LIB(rt, shm_open, [MMAP_LDFLAGS="-lrt"])
+    AC_SUBST([MMAP_LDFLAGS])
 elif test -n "$with_xpmem" -a "$with_xpmem" != "no" ; then
+    transport_mmap="no"
     transport_cma="no"
     AC_DEFINE([USE_XPMEM], [1], [Define if XPMEM transport is active])
 elif test -n "$with_cma" -a "$with_cma" != "no" ; then
+    transport_mmap="no"
     transport_xpmem="no"
     AC_DEFINE([USE_CMA], [1], [Define if Cross Memory Attach transport is active])
     AC_DEFINE([_GNU_SOURCE], [1], [CMA transport header requires global definition of _GNU_SOURCE])
-# If neither, disable XPMEM and CMA:
 else
+    transport_mmap="no"
     transport_xpmem="no"
     transport_cma="no"
-    AC_MSG_RESULT([Neither XPMEM nor CMA transport requested])
-
+    AC_MSG_RESULT([Shared memory transport not requested])
 fi
 
-if test "$enable_memcpy" = "yes" -a "$transport_xpmem" = "no" -a "$transport_cma" = "no" ; then
+if test "$enable_memcpy" = "yes" -a "$transport_xpmem" = "no" -a "$transport_cma" = "no" -a "$transport_mmap" = "no" ; then
     transport_memcpy="yes"
     AC_DEFINE([USE_MEMCPY], [1], [Define to use memcpy for local put/get communication])
-elif test "$transport_xpmem" = "yes" -o "$transport_cma" = "yes" ; then
+elif test "$transport_xpmem" = "yes" -o "$transport_cma" = "yes" -o "$transport_mmap" = "yes" ; then
     transport_memcpy="yes"
 else
     transport_memcpy="no"
@@ -534,8 +558,9 @@ fi
 
 AM_CONDITIONAL([USE_XPMEM], [test "$transport_xpmem" = "yes"])
 AM_CONDITIONAL([USE_CMA], [test "$transport_cma" = "yes"])
+AM_CONDITIONAL([USE_MMAP], [test "$transport_mmap" = "yes"])
 
-AS_IF([test "$transport_xpmem" = "yes" -o "$transport_cma" = "yes"],
+AS_IF([test "$transport_xpmem" = "yes" -o "$transport_cma" = "yes" -o "$transport_mmap" = "yes"],
       [AC_DEFINE([USE_ON_NODE_COMMS], [1], [Define if any on-node comm transport is available])
        AC_DEFINE([ENABLE_HARD_POLLING], [1], [Enable hard polling])
       ])
@@ -546,7 +571,7 @@ else
     transport_shr_atomics="no"
 fi
 
-if test "$enable_shr_atomics" != "no" -a "$transport_xpmem" = "yes" -a "$transport" = "none"; then
+if [[[ "$enable_shr_atomics" != "no" && ( "$transport_xpmem" = "yes" || "$transport_mmap" = "yes" ) && "$transport" = "none" ]]]; then
     transport_shr_atomics="yes"
     AC_DEFINE([USE_SHR_ATOMICS], [1], [If defined, the shared memory layer will perform processor atomics.])
 fi
@@ -879,6 +904,9 @@ fi
 if test -n "$with_xpmem" -a "$with_xpmem" != "no" -a "$with_xpmem" != "yes" ; then
   DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS --with-xpmem=${with_xpmem}"
 fi
+if test -n "$enable_mmap" -a "$enable_mmap" != "no" -a "$enable_mmap" != "yes" ; then
+  DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS --enable-mmap=${enable_mmap}"
+fi
 if test -n "$with_pmi" -a "$with_pmi" != "no" -a "$with_pmi" != "yes" ; then
   DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS --with-pmi=${with_pmi}"
 fi
@@ -941,6 +969,13 @@ fi
 if test -n "opal_hwloc_LDFLAGS"; then
     WRAPPER_COMPILER_EXTRA_LDFLAGS="$WRAPPER_COMPILER_EXTRA_LDFLAGS $opal_hwloc_LDFLAGS"
 fi
+if test "$transport_mmap" = "yes" ; then
+    CPPFLAGS="$CPPFLAGS $MMAP_CPPFLAGS"
+    LDFLAGS="$LDFLAGS $MMAP_LDFLAGS"
+    LIBS="$LIBS $MMAP_LIBS"
+    WRAPPER_COMPILER_EXTRA_LDFLAGS="$MMAP_LDFLAGS"
+    WRAPPER_COMPILER_EXTRA_LIBS="$MMAP_LIBS"
+fi
 
 CPPFLAGS="$CPPFLAGS $pmi_CPPFLAGS"
 LDFLAGS="$LDFLAGS $pmi_LDFLAGS $aslr_LDFLAGS"
@@ -994,7 +1029,7 @@ AS_IF([test "$enable_pmi_mpi" != "yes" -a "$enable_pmi_simple" != "yes" -a "$opa
          [AC_MSG_ERROR([No PMI client interface was configured, consider --enable-pmi-simple or --with-pmi])])
 
 AS_IF([test -z "$num_transports"],
-      [AC_MSG_WARN([No transport found, resulting library will be unable to exchange messages])])
+      [AC_MSG_WARN([No network transport found, library will be unable to exchange remote messages])])
 
 AS_IF([test "$shmem_cv_c11_works" != "yes"],
       [AC_MSG_WARN([C compiler does not support _Generic, unable to verify and test C11 bindings])])
@@ -1034,6 +1069,7 @@ echo ""
 echo "On Node Communication:"
 echo "  XPMEM:          $transport_xpmem"
 echo "  CMA:            $transport_cma"
+echo "  mmap:           $transport_mmap"
 echo "  memcpy (self):  $transport_memcpy"
 echo "  Shr. atomics:   $transport_shr_atomics"
 echo ""
