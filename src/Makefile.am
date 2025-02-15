@@ -128,6 +128,12 @@ libsma_la_SOURCES += \
 	transport_cma.c
 endif
 
+if USE_MMAP
+libsma_la_SOURCES += \
+	transport_mmap.h \
+	transport_mmap.c
+endif
+
 if USE_PMI_SIMPLE
 AM_CPPFLAGS += -I$(top_srcdir)/pmi-simple
 AM_LDFLAGS = -L$(top_builddir)/pmi-simple -lpmi_simple

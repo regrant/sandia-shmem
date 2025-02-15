@@ -27,6 +27,10 @@ include(shmem_bind_c.m4)dnl
 #include "transport_cma.h"
 #endif
 
+#ifdef USE_MMAP
+#include "transport_mmap.h"
+#endif
+
 static inline int
 shmem_shr_transport_init(void)
 {
@@ -41,6 +45,11 @@ shmem_shr_transport_init(void)
     ret = shmem_transport_cma_init();
     if (0 != ret)
         RETURN_ERROR_MSG("CMA init failed (%d)\n", ret);
+
+#elif USE_MMAP
+    ret = shmem_transport_mmap_init();
+    if (0 != ret)
+        RETURN_ERROR_MSG("mmap init failed (%d)\n", ret);
 #endif
 
     return ret;
@@ -63,6 +72,12 @@ shmem_shr_transport_startup(void)
     if (0 != ret) {
         RETURN_ERROR_MSG("CMA startup failed (%d)\n", ret);
     }
+
+#elif USE_MMAP
+    ret = shmem_transport_mmap_startup();
+    if (0 != ret) {
+        RETURN_ERROR_MSG("mmap startup failed (%d)\n", ret);
+    }
 #endif
 
     return ret;
@@ -76,6 +91,8 @@ shmem_shr_transport_fini(void)
     shmem_transport_xpmem_fini();
 #elif USE_CMA
     shmem_transport_cma_fini();
+#elif USE_MMAP
+    shmem_transport_mmap_fini();
 #endif
 }
 
@@ -87,6 +104,8 @@ shmem_shr_transport_ptr(void *target, int noderank, void **local_ptr)
 {
 #if USE_XPMEM
     XPMEM_GET_REMOTE_ACCESS(target, noderank, *local_ptr);
+#elif USE_MMAP
+    MMAP_GET_REMOTE_ACCESS(target, noderank, *local_ptr);
 #else
     RAISE_ERROR_MSG("No path to peer (%d)\n", noderank);
 #endif
@@ -147,6 +166,10 @@ shmem_shr_transport_put_scalar(shmem_ctx_t ctx, void *target,
 #elif USE_CMA
     shmem_transport_cma_put(target, source, len, pe,
                             shmem_internal_get_shr_rank(pe));
+
+#elif USE_MMAP
+    shmem_transport_mmap_put(target, source, len, pe,
+                             shmem_internal_get_shr_rank(pe));
 #else
     RAISE_ERROR_STR("No path to peer");
 #endif
@@ -165,6 +188,10 @@ shmem_shr_transport_put(shmem_ctx_t ctx, void *target, const void *source,
 #elif USE_CMA
     shmem_transport_cma_put(target, source, len, pe,
                             shmem_internal_get_shr_rank(pe));
+
+#elif USE_MMAP
+    shmem_transport_mmap_put(target, source, len, pe,
+                             shmem_internal_get_shr_rank(pe));
 #else
     RAISE_ERROR_STR("No path to peer");
 #endif
@@ -183,6 +210,10 @@ shmem_shr_transport_get(shmem_ctx_t ctx, void *target, const void *source,
 #elif USE_CMA
     shmem_transport_cma_get(target, source, len, pe,
                             shmem_internal_get_shr_rank(pe));
+
+#elif USE_MMAP
+    shmem_transport_mmap_get(target, source, len, pe,
+                             shmem_internal_get_shr_rank(pe));
 #else
     RAISE_ERROR_STR("No path to peer");
 #endif
@@ -577,6 +608,12 @@ shmem_shr_transport_put_signal(shmem_ctx_t ctx, void *target,
                               shmem_internal_get_shr_rank(pe));
     shmem_internal_membar_acq_rel(); /* Memory fence to ensure target PE observes
                                         stores in the correct order */
+#elif USE_MMAP
+    shmem_transport_mmap_put(target, source, len, pe,
+                              shmem_internal_get_shr_rank(pe));
+    shmem_internal_membar_acq_rel(); /* Memory fence to ensure target PE observes
+                                        stores in the correct order */
+
 #if USE_SHR_ATOMICS 
     if (sig_op == SHMEM_SIGNAL_ADD)
         shmem_shr_transport_atomic(ctx, sig_addr, &signal, sizeof(uint64_t),

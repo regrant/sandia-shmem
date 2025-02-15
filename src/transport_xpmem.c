@@ -26,6 +26,7 @@
 #include "shmem_internal.h"
 #include "shmem_comm.h"
 #include "runtime.h"
+#include "transport_xpmem.h"
 
 struct share_info_t {
     xpmem_segid_t data_seg;

@@ -34,6 +34,8 @@ shmem_internal_ptr(const void *target, int pe)
     if (-1 != (node_rank = shmem_internal_get_shr_rank(pe))) {
 #if USE_XPMEM
         return shmem_transport_xpmem_ptr(target, pe, node_rank);
+#elif USE_MMAP
+        return shmem_transport_mmap_ptr(target, pe, node_rank);
 #else
         return NULL;
 #endif
